@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>MD_MAX72XX Font Editor</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+<style>
+
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		background-color:#444;
+		font: 10pt sans-serif;
+		line-height: 18pt;
+		color:#c3c3c3;
+	}
+
+	#app {
+		margin-top: 20px;
+	}
+
+	#editor .toolbar {
+		position: relative;
+		background: #333;
+		padding-top: .5rem;
+		padding-left: .5rem;
+		border-radius: 6px;
+	}
+
+	.title {
+		display: block;
+		position: absolute;
+		margin-bottom: 8px;
+		right: 15px;
+		font-style: italic;
+		font-weight: bolder;
+		font-size: 22px;
+		color: #444;
+		text-align: right;
+		line-height: 22px;
+	}
+
+	.title .sub {
+		display: block;
+		font-size: 12px;
+		line-height: 10px;
+	}
+
+	.vertical-rule{
+		display: inline-block;
+		height: 30px;
+		width: 1px;
+		background: #444;
+	}
+
+	#editor .char_width {
+		width:80px;
+	}
+	
+	#editor .char_name {
+		min-width: 100px;
+	}
+
+	#editor .char_preview {
+		display: block;
+		background: #222;
+		padding: 2px;
+		float: left;
+		margin-right: 10px;
+		min-width: 196px;
+	}
+
+	#editor .char_preview .column {
+		float: left;
+	}
+
+
+	#editor textarea,
+	#cfont {
+		font-size: 8pt;
+	}
+
+
+	input[type=checkbox].led {
+		position:absolute; z-index:-1000; left:-1000px; overflow: hidden; clip: rect(0 0 0 0); height:1px; width:1px; margin:-1px; padding:0; border:0;
+	}
+
+	input[type=checkbox].led + label.led {
+		height:24px; 
+		width:24px;
+		display:inline-block;
+		background-repeat:no-repeat;
+		background-position: 0 0;
+		vertical-align:middle;
+		cursor:pointer;
+
+	}
+
+	input[type=checkbox].led:checked + label.led {
+		background: red;
+	}
+
+	label.led {
+		border: solid 1px #333;
+		border-radius: 20px;
+		background: #555555;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		-khtml-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+		margin: 0px;
+		padding: 0px;
+	}
+
+	label {
+		text-transform: uppercase;
+		font-size: 7pt;
+		line-height: 10pt;
+		display: block;
+	}
+	input[type=number],
+	input[type=text] {
+		margin-bottom: 10px;
+	}
+
+	button {
+		min-width: 28px;
+	}
+
+	#charTable {
+		position: relative;
+		font-size: 7pt;
+		line-height: 9pt;
+	}
+
+	#charTable .char {
+		padding: 2px;
+		display: block;
+		height: 60px;
+		margin-bottom: 5px;
+		float: left;
+		border: solid 1px transparent;
+	}
+	#charTable .char.active {
+		border-color: #0069d9;
+	}
+
+
+	#charTable .char .char_preview {
+		display: block;
+		background: #222;
+		min-width: 32px;
+		height: 32px;
+		border-top: solid 1px #222;
+		border-left: solid 1px #222;
+	}
+
+	#charTable .char .char_preview div {
+	    height: 4px;
+		width: 4px;
+		float: left;
+		background: #555;
+		border-right: solid 1px #222;
+		border-bottom: solid 1px #222;
+    	border-radius: 2px;
+	}
+
+	#charTable .char_preview div.on {
+		background: red;
+	}
+
+	#cfont {
+		width:100%;
+		overflow: scroll;
+	}
+
+</style>
+<!-- development version, includes helpful console warnings -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<!-- production version, optimized for size and speed -->
+<!--script src="https://cdn.jsdelivr.net/npm/vue"></script-->
+
+</head>
+<body>
+
+	<div id="app" class="container">
+
+		<div id="editor">
+			<div class="toolbar form-inline">
+				<div class="btn-group  mb-2 mr-sm-2" role="group">
+					<button type="button" @click="editorPrev" class="btn btn-primary" >Prev</button>
+					<button type="button" @click="editorNext"  class="btn btn-primary" >Next</button>
+				</div>
+				<div class="input-group mb-2 mr-sm-2">
+					<div class="input-group-prepend">
+						<div class="input-group-text">Width</div>
+					</div>
+					<input type="text" min=1 max=20 :value="charColsLength" disabled class="form-control char_width">
+					<div class="input-group-append">
+							<button type="button" @click="editor.char.cols.splice(-1,1)" class="btn btn-primary" ><i class="fas fa-minus"></i></button>
+							<button type="button" @click="editor.char.cols.push([0,0,0,0,0,0,0,0])" class="btn btn-primary" ><i class="fas fa-plus"></i></button>
+					</div>
+				</div>
+				<button type="button" @click="editorFit" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-text-width"></i> Fit</button>
+				<button type="button" @click="editorSave" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-save"></i> Save</button>
+				<button type="button" @click="editorClear" class="btn btn-danger mb-2 mr-sm-2" ><i class="fas fa-eraser"></i> Clear</button>
+				<button type="button" @click="editorDelete" class="btn btn-danger mb-2 mr-sm-2" ><i class="fas fa-trash"></i> Delete</button>
+				<span class="vertical-rule mb-2 mr-sm-2"></span>
+				<div class="title">MD_MAX72XX<span class="sub"># FONT EDITOR</span></div>
+			</div>
+			<hr>
+			<div class="row">
+				<div class="col-sm-3">
+					<div class="form-group">
+						<div class="input-group">
+							<div class="input-group-prepend">
+								<div class="input-group-text">#&nbsp;<span v-if="">{{ editor.char.index }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[editor.char.index] }}</span></div>
+							</div>
+							<input type="text" v-model="editor.char.label" class="form-control" placeholder="Label">
+						</div>
+					</div>
+					<div class="form-group">
+						<textarea rows="5" v-model="encodedChar" disabled class="form-control"></textarea> 
+					</div>
+				</div>
+				<div class="col-sm-9">
+					<div class="char_preview" >
+						<div class="column" v-for="(column, col_i) in editor.char.cols">
+							<div class="led-container"  v-for="(led, led_i) in column">
+								<input type="checkbox" 
+									:id="'led-'+col_i+led_i" 
+									:name="'led-'+col_i+led_i" 
+									class="led" 
+									v-model="editor.char.cols[col_i][led_i]" 
+									true-value=1 
+									false-value=0 
+								/>
+								<label :for="'led-'+col_i+led_i" class="led"></label>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<hr>
+		<div class="row">
+			<div class="col-sm-3">
+				<div class="form-inline">
+					<button type="button" @click="importFont" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-arrow-up"></i> Import</button>
+					<button type="button" @click="exportFont" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-arrow-down"></i> Export</button>
+				</div>
+				<div class="input-group mb-2">
+					<div class="input-group-prepend">
+						<div class="input-group-text">Name</div>
+					</div>
+					<input type="text" v-model="font.name" class="form-control">
+				</div>
+				<div class="form-group">
+					<textarea id="cfont" rows="44" wrap="off" v-model="cfont" class="form-control"></textarea>	
+				</div>
+				
+			</div>
+			<div class="col-sm-9">
+				<div id="charTable">
+					<div :class="{ active: char_i == editor.char.index, char }" 
+						v-for="(char, char_i) in font.chars"
+						v-on:click.prevent="editorLoadChar(char_i)"
+					>
+						<div class="char_preview">
+							<div class="column" v-for="(column, col_i) in char.cols">
+								<div v-for="(led, led_i) in column" 
+									:class="{ on: parseInt(font.chars[char_i].cols[col_i][led_i]) }"
+								>
+								</div>
+							</div>
+						</div>
+						<div>
+							<span>{{ char_i }}</span><br>
+							<span>{{ ascii[char_i] }}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+
+	</div>
+
+	
+	<script>
+
+	new Vue({
+		el: '#app',
+		data: {
+			editor: {
+				char: {
+					cols: [],
+					index: "",
+					label: "",
+				},
+				encoded: "",
+				decoded: "",		
+			},
+			empty_char:  {
+				cols: [
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+					[0,0,0,0,0,0,0,0],
+				],
+				label: "" 
+			},
+			font: {
+				name: '',
+				chars: [],
+			},
+			cfont: "",
+			ascii: []
+		},
+		computed: {
+			charColsLength: function () {
+				return this.editor.char.cols.length;
+			},
+			encodedChar: function () {
+				return this.encodeChar(this.editor.char, this.editor.char.index);
+			},
+		},
+		created: function () {
+			// build default ASCII char list
+			var ascii = "NUL,SOH,STX,ETX,EOT,ENQ,ACK,BEL,BS,HT,LF,VT,FF,CR,SO,SI,DLE,DC1,DC2,DC3,DC4,NAK,SYN,ETB,CAN,EM,SUB,ESC,FS,GS,RS,US,SPACE,!,\",#,$,%,&,',(,),*,+,COMA,-,.,/,0,1,2,3,4,5,6,7,8,9,:,;,<,=,>,?,@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,\,],^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},~,,€, ,‚,ƒ,„,…,†,‡,ˆ,‰,Š,‹,Œ, ,Ž, , ,‘,’,“,”,•,–,—,˜,™,š,›,œ, ,ž,Ÿ, ,¡,¢,£,¤,¥,¦,§,¨,©,ª,«,¬,­,®,¯,°,±,²,³,´,µ,¶,·,¸,¹,º,»,¼,½,¾,¿,À,Á,Â,Ã,Ä,Å,Æ,Ç,È,É,Ê,Ë,Ì,Í,Î,Ï,Ð,Ñ,Ò,Ó,Ô,Õ,Ö,×,Ø,Ù,Ú,Û,Ü,Ý,Þ,ß,à,á,â,ã,ä,å,æ,ç,è,é,ê,ë,ì,í,î,ï,ð,ñ,ò,ó,ô,õ,ö,÷,ø,ù,ú,û,ü,ý,þ,ÿ,";
+			ascii = ascii.split(",");
+			ascii[44] = ",";
+			this.ascii = ascii;
+			for (var i = 0; i <= 255; i++) {
+				this.font.chars.push( {
+						cols: [],
+						label: ''
+				})
+			}
+			this.editorLoadChar(0);
+		},
+		methods: {
+			// Load char to editor
+			editorLoadChar(index){
+				var char = this.font.chars[index];
+				// "JSON.parse(JSON.stringify(char))" makes a shallow unlinked copy
+				if(char.cols.length) {
+					// edit the char
+					this.editor.char.cols = JSON.parse(JSON.stringify(char.cols));
+				} else {
+					// copy a default "empty" char
+					this.editor.char.cols = JSON.parse(JSON.stringify(this.empty_char.cols));
+				}
+				this.editor.char.label = JSON.parse(JSON.stringify(char.label));
+				this.editor.char.index = index
+			},
+			editorSave(){
+				var index = this.editor.char.index;
+				this.font.chars[index].cols = JSON.parse(JSON.stringify(this.editor.char.cols)); 
+				this.font.chars[index].label = JSON.parse(JSON.stringify(this.editor.char.label)); 
+			},
+			editorFit(){
+				var length = this.editor.char.cols.length - 1;
+				var i = 0;
+				while ( parseInt(this.editor.char.cols[i].join('')) == false && i < length) {
+					this.editor.char.cols.shift();
+					i++;
+				}
+				i = this.editor.char.cols.length - 1;
+				while ( parseInt(this.editor.char.cols[i].join('')) == false && i > 0) {
+					this.editor.char.cols.splice(-1,1);
+					i--;
+				}
+			},
+			editorClear(){
+				var width = this.editor.char.cols.length;
+				var empty = [];
+				for (var i = 0; i < width; i++) {
+					empty.push([0,0,0,0,0,0,0,0]);
+				}
+				this.editor.char.cols = empty;
+			},
+			editorDelete(){
+				var index = this.editor.char.index;
+				this.font.chars[index].cols = [];
+				this.editorClear();
+			},
+			editorPrev(){
+				var index = this.editor.char.index;
+				if( index > 0) this.editorLoadChar(index - 1);
+			},
+			editorNext(){
+				var index = this.editor.char.index;
+				if(index < 254) this.editorLoadChar(index + 1);	
+			},
+
+			// Import font
+			importFont (){
+				// ToDo validation
+				var cfont = this.cfont;
+				var cfont_header, cfont_start, cfont_end, name_start, name_end;
+				var cfont_chars;
+				var chars = [];
+				var char = [];
+				name_start = cfont.indexOf('e_t') + 4;
+				name_end = cfont.indexOf('[]');
+				this.font.name = cfont.substring(name_start, name_end);
+				cfont_start = cfont.indexOf('{') + 1;
+				cfont_end = cfont.lastIndexOf('}');
+				cfont_chars = cfont.substring(cfont_start, cfont_end);
+				cfont_chars = cfont_chars.replace(/[\n\r]/g,'|');
+				chars = cfont_chars.split("|");
+				console.log(chars);
+				for (var i = 0; i < chars.length; i++) {
+					chars[i] = chars[i].split(",");
+				}
+				// remove empty
+				chars = chars.filter(function (el) {
+					return el != "";
+				});
+				for (var i = 0; i < chars.length -1; i++) {
+					// console.log(chars[i]);
+					this.font.chars[i].cols = this.decodeChar(chars[i]); 
+				}
+			},
+			// decode char
+			decodeChar (char){
+				if (parseInt(char[0]) == 0) {
+					return [];
+				}
+				var char_cols = char.slice(1, char.length - 1);
+				var decoded_cols = char_cols.map(function (value) {
+					value = parseInt(value, 10).toString(2).padStart(8, '0');
+					return value.split('');
+				});
+				return decoded_cols;
+			}, 
+			exportFont (){
+				var font = this.font;
+				var cfont = '';
+				cfont += 'MD_MAX72XX::fontType_t ' + font.name + '[] PROGMEM = \n{\n';
+				for (var i = 0; i <= 255; i++) {
+					var char = font.chars[i];
+					cfont += '\t' + this.encodeChar(char, i); 
+				}
+				cfont += '}';
+				this.cfont = cfont;
+			},
+			// encode char
+			encodeChar (char, index = 0){
+				var width = char.cols.length; 
+				var encoded_char = '';
+				var reversed;
+				if (! width) {
+					encoded_char += '0, ';
+				} else {
+					encoded_char += width +  ', ';
+					for (var i = 0; i < width; i++) {
+						reversed = char.cols[i].slice().reverse().join('');
+						encoded_char += parseInt(reversed, 2).toString(16);
+						encoded_char += ', '; 
+					}
+				}
+				encoded_char += '\t// ' + index + ' \'' + this.ascii[index] + '\'\t' ; 
+				encoded_char += char.label + '\n' ;
+				return encoded_char
+			}, 
+		}
+	})
+	</script>
+	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+	
+</body>
+</html>
