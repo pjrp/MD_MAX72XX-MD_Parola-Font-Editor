@@ -20,6 +20,7 @@
 
 	#app {
 		margin-top: 20px;
+		margin-bottom: 20px;
 	}
 
 	#editor .toolbar {
@@ -28,6 +29,25 @@
 		padding-top: .5rem;
 		padding-left: .5rem;
 		border-radius: 6px;
+	}
+
+	.loaded_char {
+		display: inline-block;
+		font-weight: 400;
+		text-align: left;
+		white-space: nowrap;
+		vertical-align: middle;
+		border: 1px solid #222;
+		padding: .375rem .75rem;
+		font-size: 1rem;
+		line-height: 1.5;
+		border-radius: .25rem;
+		min-width: 110px;
+		background: #222;
+	}
+
+	.loaded_char .badge {
+		vertical-align: text-bottom;
 	}
 
 	.title {
@@ -136,6 +156,7 @@
 		position: relative;
 		font-size: 7pt;
 		line-height: 9pt;
+		overflow: auto;
 	}
 
 	#charTable .char {
@@ -192,6 +213,7 @@
 
 		<div id="editor">
 			<div class="toolbar form-inline">
+				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span v-if="">{{ editor.char.index }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[editor.char.index] }}</span></div>
 				<div class="btn-group  mb-2 mr-sm-2" role="group">
 					<button type="button" @click="editorPrev" class="btn btn-primary" >Prev</button>
 					<button type="button" @click="editorNext"  class="btn btn-primary" >Next</button>
@@ -209,7 +231,15 @@
 				<button type="button" @click="editorFit" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-text-width"></i> Fit</button>
 				<button type="button" @click="editorSave" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-save"></i> Save</button>
 				<button type="button" @click="editorClear" class="btn btn-danger mb-2 mr-sm-2" ><i class="fas fa-eraser"></i> Clear</button>
-				<button type="button" @click="editorDelete" class="btn btn-danger mb-2 mr-sm-2" ><i class="fas fa-trash"></i> Delete</button>
+				<div class="btn-group mb-2 mr-sm-2">
+					<button type="button" @click="editorDelete" class="btn btn-danger" ><i class="fas fa-trash"></i> Delete</button>
+					<button type="button" class="btn btn-danger dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<span class="sr-only">Toggle Dropdown</span>
+					</button>
+					<div class="dropdown-menu">
+						<a href="#" @click.prevent="resetFont" class="dropdown-item text-danger" ><i class="fas fa-exclamation-triangle "></i> Delete all chars</a>
+					</div>
+				</div>
 				<span class="vertical-rule mb-2 mr-sm-2"></span>
 				<div class="title">MD_MAX72XX<span class="sub"># FONT EDITOR</span></div>
 			</div>
@@ -219,9 +249,9 @@
 					<div class="form-group">
 						<div class="input-group">
 							<div class="input-group-prepend">
-								<div class="input-group-text">#&nbsp;<span v-if="">{{ editor.char.index }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[editor.char.index] }}</span></div>
+								<div class="input-group-text">Label</div>
 							</div>
-							<input type="text" v-model="editor.char.label" class="form-control" placeholder="Label">
+							<input type="text" v-model="editor.char.label" class="form-control">
 						</div>
 					</div>
 					<div class="form-group">
@@ -285,6 +315,7 @@
 						</div>
 					</div>
 				</div>
+				<hr>	
 			</div>
 
 		</div>
@@ -335,19 +366,28 @@
 				return this.encodeChar(this.editor.char, this.editor.char.index);
 			},
 		},
+		watch: {
+			font: {
+				handler() {
+				localStorage.setItem('font', JSON.stringify(this.font));
+			},
+			deep: true,
+			},
+		},
 		created: function () {
 			// build default ASCII char list
 			var ascii = "NUL,SOH,STX,ETX,EOT,ENQ,ACK,BEL,BS,HT,LF,VT,FF,CR,SO,SI,DLE,DC1,DC2,DC3,DC4,NAK,SYN,ETB,CAN,EM,SUB,ESC,FS,GS,RS,US,SPACE,!,\",#,$,%,&,',(,),*,+,COMA,-,.,/,0,1,2,3,4,5,6,7,8,9,:,;,<,=,>,?,@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,\,],^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},~,,€, ,‚,ƒ,„,…,†,‡,ˆ,‰,Š,‹,Œ, ,Ž, , ,‘,’,“,”,•,–,—,˜,™,š,›,œ, ,ž,Ÿ, ,¡,¢,£,¤,¥,¦,§,¨,©,ª,«,¬,­,®,¯,°,±,²,³,´,µ,¶,·,¸,¹,º,»,¼,½,¾,¿,À,Á,Â,Ã,Ä,Å,Æ,Ç,È,É,Ê,Ë,Ì,Í,Î,Ï,Ð,Ñ,Ò,Ó,Ô,Õ,Ö,×,Ø,Ù,Ú,Û,Ü,Ý,Þ,ß,à,á,â,ã,ä,å,æ,ç,è,é,ê,ë,ì,í,î,ï,ð,ñ,ò,ó,ô,õ,ö,÷,ø,ù,ú,û,ü,ý,þ,ÿ,";
 			ascii = ascii.split(",");
 			ascii[44] = ",";
 			this.ascii = ascii;
-			for (var i = 0; i <= 255; i++) {
-				this.font.chars.push( {
-						cols: [],
-						label: ''
-				})
+		},
+		mounted() {
+			if (localStorage.getItem('font')) {
+				this.font = JSON.parse(localStorage.getItem('font'));
+				this.editorLoadChar(32);
+			}  else {
+				this.resetFont();
 			}
-			this.editorLoadChar(0);
 		},
 		methods: {
 			// Load char to editor
@@ -393,7 +433,7 @@
 			editorDelete(){
 				var index = this.editor.char.index;
 				this.font.chars[index].cols = [];
-				this.editorClear();
+				this.editor.char.cols = JSON.parse(JSON.stringify(this.empty_char.cols));
 			},
 			editorPrev(){
 				var index = this.editor.char.index;
@@ -403,8 +443,17 @@
 				var index = this.editor.char.index;
 				if(index < 254) this.editorLoadChar(index + 1);	
 			},
-
-			// Import font
+			resetFont (){
+				this.font.chars = [];
+				for (var i = 0; i <= 255; i++) {
+					this.font.chars.push( {
+						cols: [],
+						label: ''
+					})
+				}
+				this.font.name = 'newFont';
+				this.editorLoadChar(32);
+			},
 			importFont (){
 				// ToDo validation
 				var cfont = this.cfont;
@@ -433,7 +482,6 @@
 					this.font.chars[i].cols = this.decodeChar(chars[i]); 
 				}
 			},
-			// decode char
 			decodeChar (char){
 				if (parseInt(char[0]) == 0) {
 					return [];
@@ -456,7 +504,6 @@
 				cfont += '}';
 				this.cfont = cfont;
 			},
-			// encode char
 			encodeChar (char, index = 0){
 				var width = char.cols.length; 
 				var encoded_char = '';
@@ -478,7 +525,8 @@
 		}
 	})
 	</script>
-	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-	
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </body>
 </html>
