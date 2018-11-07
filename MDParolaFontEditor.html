@@ -246,8 +246,8 @@
 			<hr>
 			<div class="row">
 				<div class="col-sm-3">
-					<div class="form-group">
-						<div class="input-group" v-for="(char, i) in editor.char">
+					<div class="form-group" v-for="(char, i) in editor.char" v-if="editor.char[i].cols.length">
+						<div class="input-group" >
 							<div class="input-group-prepend">
 								<div class="input-group-text">Label</div>
 							</div>
