@@ -247,11 +247,11 @@
 			<div class="row">
 				<div class="col-sm-3">
 					<div class="form-group">
-						<div class="input-group">
+						<div class="input-group" v-for="(char, i) in editor.char">
 							<div class="input-group-prepend">
 								<div class="input-group-text">Label</div>
 							</div>
-							<input type="text" v-model="editor.char.label" class="form-control">
+							<input type="text" v-model="editor.char[i].label" class="form-control">
 						</div>
 					</div>
 					<div class="form-group">
