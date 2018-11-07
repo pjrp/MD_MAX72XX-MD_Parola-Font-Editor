@@ -469,7 +469,7 @@
 				cfont_chars = cfont.substring(cfont_start, cfont_end);
 				cfont_chars = cfont_chars.replace(/[\n\r]/g,'|');
 				chars = cfont_chars.split("|");
-				console.log(chars);
+				// console.log(chars);
 				for (var i = 0; i < chars.length; i++) {
 					chars[i] = chars[i].split(",");
 				}
@@ -480,6 +480,7 @@
 				for (var i = 0; i < chars.length -1; i++) {
 					// console.log(chars[i]);
 					this.font.chars[i].cols = this.decodeChar(chars[i]); 
+					this.font.chars[i].label = chars[i].slice(-1)[0].replace(/(\t|\/\/)+ [0-9]+/g,'');
 				}
 			},
 			decodeChar (char){
