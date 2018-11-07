@@ -212,7 +212,7 @@
 
 		<div id="editor">
 			<div class="toolbar form-inline">
-				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span v-if="">{{ editor.char.index }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[editor.char.index] }}</span></div>
+				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span v-if="editor.char[0].index">{{ loadedCharIndex }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[loadedCharIndex] }}</span></div>
 				<div class="btn-group  mb-2 mr-sm-2" role="group">
 					<button type="button" @click="editorPrev" class="btn btn-primary" >Prev</button>
 					<button type="button" @click="editorNext"  class="btn btn-primary" >Next</button>
@@ -290,7 +290,7 @@
 					<input type="text" v-model="font.name" class="form-control">
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="checkbox" name="double_height" id="double_height" v-model="font.double_height" >
+					<input class="form-check-input" type="checkbox" name="double_height" id="double_height" v-model="font.double_height" @change="editorLoadChar(32)" >
 					<label class="form-check-label" for="double_height">Double height</label>
 				</div>
 				<div class="form-group">
@@ -300,7 +300,7 @@
 			</div>
 			<div class="col-sm-9">
 				<div id="charTable">
-					<div :class="{ active: char_i == editor.char.index, char }" 
+					<div class="char" 
 						v-for="(char, char_i) in font.chars"
 						v-on:click.prevent="editorLoadChar(char_i)"
 						v-if="! font.double_height || font.double_height && char_i < 127"
@@ -308,7 +308,7 @@
 						<div class="char_preview" v-if="font.double_height">
 							<div class="column" v-for="(column, col_i) in font.chars[char_i+129].cols">
 								<div v-for="(led, led_i) in column" 
-									:class="{ on: parseInt(font.chars[char_i+129].cols[col_i][led_i]) }"
+									:class="{ on: parseInt(led) }"
 								>
 								</div>
 							</div>
@@ -316,13 +316,13 @@
 						<div class="char_preview">
 							<div class="column" v-for="(column, col_i) in char.cols">
 								<div v-for="(led, led_i) in column" 
-									:class="{ on: parseInt(font.chars[char_i].cols[col_i][led_i]) }"
+									:class="{ on: parseInt(led) }"
 								>
 								</div>
 							</div>
 						</div>
 						<div>
-							<span>{{ char_i }}</span><br>
+							<span v-if="font.double_height">{{ char_i + 129 }}/</span><span>{{ char_i }}</span><br>
 							<span>{{ ascii[char_i] }}</span>
 						</div>
 					</div>
@@ -380,18 +380,29 @@
 		},
 		computed: {
 			charColsLength: function () {
-				return this.editor.char[1].cols.length;
+				return this.editor.char[0].cols.length;
 			},
 			encodedChar: function () {
-				return this.encodeChar(this.editor.char[1], this.editor.char.index);
+				var encoded_char = '';
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					encoded_char += this.encodeChar(this.editor.char[i], this.editor.char[i].index) + '';
+				}
+				return encoded_char
 			},
+			loadedCharIndex: function () {
+				var i = 0;
+				if( this.font.double_height) i = 1;
+				return this.editor.char[i].index;
+			},
+			
 		},
 		watch: {
 			font: {
 				handler() {
-				localStorage.setItem('font', JSON.stringify(this.font));
-			},
-			deep: true,
+					localStorage.setItem('font', JSON.stringify(this.font));
+				},
+				deep: true,
 			},
 		},
 		created: function () {
@@ -408,7 +419,6 @@
 			}  else {
 				this.resetFont();
 			}
-
 		},
 		methods: {
 			// Load char to editor
@@ -416,8 +426,14 @@
 				var char = [];
 				char.push(this.font.chars[index]);
 				if (this.font.double_height) char.unshift(this.font.chars[index + 129]);
+				// clear editor
+				for (var i = 0; i < 2; i++) {
+					this.editor.char[i].cols = [];
+					this.editor.char[i].index = '';
+					this.editor.char[i].label = '';
+				}
+				// load char(s)
 				for (var i = 0; i < char.length; i++) {
-					
 					// "JSON.parse(JSON.stringify(char))" makes a shallow unlinked copy
 					if(char[i].cols.length) {
 						// edit the char
@@ -428,18 +444,17 @@
 					}
 					this.editor.char[i].label = JSON.parse(JSON.stringify(char[i].label));
 					if (i == 0 && this.font.double_height) {
-						this.editor.char[i].index = index;
-					} else {
 						this.editor.char[i].index = index + 129;
+					} else {
+						this.editor.char[i].index = index;
 					}
-
 				}
 			},
 			editorSave(){
-				var index;
 				for (var i = 0; i < 2; i++) {
+					var index = this.editor.char[i].index;
+					console.log(index);
 					if (! this.editor.char[i].index) continue;
-					index = this.editor.char[i].index;
 					this.font.chars[index].cols = JSON.parse(JSON.stringify(this.editor.char[i].cols)); 
 					this.font.chars[index].label = JSON.parse(JSON.stringify(this.editor.char[i].label));
 				}
@@ -477,7 +492,7 @@
 					if (! this.editor.char[i].index) continue;
 					var width = this.editor.char[i].cols.length;
 					var empty = [];
-					for (var i = 0; i < width; i++) {
+					for (var c = 0; c < width; c++) {
 						empty.push([0,0,0,0,0,0,0,0]);
 					}
 					this.editor.char[i].cols = empty;
@@ -533,6 +548,7 @@
 				chars = chars.filter(function (el) {
 					return el != "";
 				});
+				this.resetFont();	
 				for (var i = 0; i < chars.length -1; i++) {
 					// console.log(chars[i]);
 					this.font.chars[i].cols = this.decodeChar(chars[i]); 
@@ -570,12 +586,14 @@
 				} else {
 					encoded_char += width +  ', ';
 					for (var i = 0; i < width; i++) {
+
 						reversed = char.cols[i].slice().reverse().join('');
-						encoded_char += parseInt(reversed, 2).toString(16);
+						encoded_char += parseInt(reversed, 2);
 						encoded_char += ', '; 
 					}
 				}
-				encoded_char += '\t// ' + index + ' \'' + this.ascii[index] + '\'\t' ; 
+				//encoded_char += '\t// ' + index + ' \'' + this.ascii[index] + '\'\t' ; 
+				encoded_char += '\t// ' + index;
 				encoded_char += char.label + '\n' ;
 				return encoded_char
 			}, 
