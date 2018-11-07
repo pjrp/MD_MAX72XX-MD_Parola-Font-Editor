@@ -87,10 +87,10 @@
 	#editor .char_preview {
 		display: block;
 		background: #222;
-		padding: 2px;
-		float: left;
 		margin-right: 10px;
 		min-width: 196px;
+		overflow: auto;
+		width: fit-content;
 	}
 
 	#editor .char_preview .column {
@@ -140,13 +140,13 @@
 	label {
 		text-transform: uppercase;
 		font-size: 7pt;
-		line-height: 10pt;
 		display: block;
 	}
 	input[type=number],
 	input[type=text] {
 		margin-bottom: 10px;
 	}
+
 
 	button {
 		min-width: 28px;
@@ -162,7 +162,6 @@
 	#charTable .char {
 		padding: 2px;
 		display: block;
-		height: 60px;
 		margin-bottom: 5px;
 		float: left;
 		border: solid 1px transparent;
@@ -224,8 +223,8 @@
 					</div>
 					<input type="text" min=1 max=20 :value="charColsLength" disabled class="form-control char_width">
 					<div class="input-group-append">
-							<button type="button" @click="editor.char.cols.splice(-1,1)" class="btn btn-primary" ><i class="fas fa-minus"></i></button>
-							<button type="button" @click="editor.char.cols.push([0,0,0,0,0,0,0,0])" class="btn btn-primary" ><i class="fas fa-plus"></i></button>
+							<button type="button" @click="editorRemoveCol" class="btn btn-primary" ><i class="fas fa-minus"></i></button>
+							<button type="button" @click="editorAddCol" class="btn btn-primary" ><i class="fas fa-plus"></i></button>
 					</div>
 				</div>
 				<button type="button" @click="editorFit" class="btn btn-primary mb-2 mr-sm-2" ><i class="fas fa-text-width"></i> Fit</button>
@@ -259,18 +258,18 @@
 					</div>
 				</div>
 				<div class="col-sm-9">
-					<div class="char_preview" >
-						<div class="column" v-for="(column, col_i) in editor.char.cols">
+					<div class="char_preview" v-for="(char, i) in editor.char">
+						<div class="column" v-for="(column, col_i) in editor.char[i].cols">
 							<div class="led-container"  v-for="(led, led_i) in column">
 								<input type="checkbox" 
-									:id="'led-'+col_i+led_i" 
-									:name="'led-'+col_i+led_i" 
+									:id="i+'led-'+col_i+led_i" 
+									:name="i+'led-'+col_i+led_i" 
 									class="led" 
-									v-model="editor.char.cols[col_i][led_i]" 
+									v-model="editor.char[i].cols[col_i][led_i]" 
 									true-value=1 
 									false-value=0 
 								/>
-								<label :for="'led-'+col_i+led_i" class="led"></label>
+								<label :for="i+'led-'+col_i+led_i" class="led"></label>
 							</div>
 						</div>
 					</div>
@@ -290,6 +289,10 @@
 					</div>
 					<input type="text" v-model="font.name" class="form-control">
 				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="checkbox" name="double_height" id="double_height" v-model="font.double_height" >
+					<label class="form-check-label" for="double_height">Double height</label>
+				</div>
 				<div class="form-group">
 					<textarea id="cfont" rows="44" wrap="off" v-model="cfont" class="form-control"></textarea>	
 				</div>
@@ -300,7 +303,16 @@
 					<div :class="{ active: char_i == editor.char.index, char }" 
 						v-for="(char, char_i) in font.chars"
 						v-on:click.prevent="editorLoadChar(char_i)"
+						v-if="! font.double_height || font.double_height && char_i < 127"
 					>
+						<div class="char_preview" v-if="font.double_height">
+							<div class="column" v-for="(column, col_i) in font.chars[char_i+129].cols">
+								<div v-for="(led, led_i) in column" 
+									:class="{ on: parseInt(font.chars[char_i+129].cols[col_i][led_i]) }"
+								>
+								</div>
+							</div>
+						</div>
 						<div class="char_preview">
 							<div class="column" v-for="(column, col_i) in char.cols">
 								<div v-for="(led, led_i) in column" 
@@ -330,11 +342,18 @@
 		el: '#app',
 		data: {
 			editor: {
-				char: {
-					cols: [],
-					index: "",
-					label: "",
-				},
+				char: [
+					{
+						cols: [],
+						index: "",
+						label: "",
+					},
+					{
+						cols: [],
+						index: "",
+						label: "",
+					}
+				],
 				encoded: "",
 				decoded: "",		
 			},
@@ -354,16 +373,17 @@
 			font: {
 				name: '',
 				chars: [],
+				double_height: false,
 			},
 			cfont: "",
 			ascii: []
 		},
 		computed: {
 			charColsLength: function () {
-				return this.editor.char.cols.length;
+				return this.editor.char[1].cols.length;
 			},
 			encodedChar: function () {
-				return this.encodeChar(this.editor.char, this.editor.char.index);
+				return this.encodeChar(this.editor.char[1], this.editor.char.index);
 			},
 		},
 		watch: {
@@ -388,52 +408,88 @@
 			}  else {
 				this.resetFont();
 			}
+
 		},
 		methods: {
 			// Load char to editor
 			editorLoadChar(index){
-				var char = this.font.chars[index];
-				// "JSON.parse(JSON.stringify(char))" makes a shallow unlinked copy
-				if(char.cols.length) {
-					// edit the char
-					this.editor.char.cols = JSON.parse(JSON.stringify(char.cols));
-				} else {
-					// copy a default "empty" char
-					this.editor.char.cols = JSON.parse(JSON.stringify(this.empty_char.cols));
+				var char = [];
+				char.push(this.font.chars[index]);
+				if (this.font.double_height) char.unshift(this.font.chars[index + 129]);
+				for (var i = 0; i < char.length; i++) {
+					
+					// "JSON.parse(JSON.stringify(char))" makes a shallow unlinked copy
+					if(char[i].cols.length) {
+						// edit the char
+						this.editor.char[i].cols = JSON.parse(JSON.stringify(char[i].cols));
+					} else {
+						// copy a default "empty" char
+						this.editor.char[i].cols = JSON.parse(JSON.stringify(this.empty_char.cols));
+					}
+					this.editor.char[i].label = JSON.parse(JSON.stringify(char[i].label));
+					if (i == 0 && this.font.double_height) {
+						this.editor.char[i].index = index;
+					} else {
+						this.editor.char[i].index = index + 129;
+					}
+
 				}
-				this.editor.char.label = JSON.parse(JSON.stringify(char.label));
-				this.editor.char.index = index
 			},
 			editorSave(){
-				var index = this.editor.char.index;
-				this.font.chars[index].cols = JSON.parse(JSON.stringify(this.editor.char.cols)); 
-				this.font.chars[index].label = JSON.parse(JSON.stringify(this.editor.char.label)); 
+				var index;
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					index = this.editor.char[i].index;
+					this.font.chars[index].cols = JSON.parse(JSON.stringify(this.editor.char[i].cols)); 
+					this.font.chars[index].label = JSON.parse(JSON.stringify(this.editor.char[i].label));
+				}
+			},
+			editorAddCol(){
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					this.editor.char[i].cols.push([0,0,0,0,0,0,0,0])
+				}
+			},
+			editorRemoveCol(){
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					this.editor.char[i].cols.splice(-1,1);
+				}
 			},
 			editorFit(){
-				var length = this.editor.char.cols.length - 1;
-				var i = 0;
-				while ( parseInt(this.editor.char.cols[i].join('')) == false && i < length) {
-					this.editor.char.cols.shift();
-					i++;
-				}
-				i = this.editor.char.cols.length - 1;
-				while ( parseInt(this.editor.char.cols[i].join('')) == false && i > 0) {
-					this.editor.char.cols.splice(-1,1);
-					i--;
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					var length = this.editor.char[i].cols.length - 1;
+					var i = 0;
+					while ( parseInt(this.editor.char[i].cols[i].join('')) == false && i < length) {
+						this.editor.char[i].cols.shift();
+						i++;
+					}
+					i = this.editor.char[i].cols.length - 1;
+					while ( parseInt(this.editor.char[i].cols[i].join('')) == false && i > 0) {
+						this.editor.char[i].cols.splice(-1,1);
+						i--;
+					}
 				}
 			},
 			editorClear(){
-				var width = this.editor.char.cols.length;
-				var empty = [];
-				for (var i = 0; i < width; i++) {
-					empty.push([0,0,0,0,0,0,0,0]);
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					var width = this.editor.char[i].cols.length;
+					var empty = [];
+					for (var i = 0; i < width; i++) {
+						empty.push([0,0,0,0,0,0,0,0]);
+					}
+					this.editor.char[i].cols = empty;
 				}
-				this.editor.char.cols = empty;
 			},
 			editorDelete(){
-				var index = this.editor.char.index;
-				this.font.chars[index].cols = [];
-				this.editor.char.cols = JSON.parse(JSON.stringify(this.empty_char.cols));
+				for (var i = 0; i < 2; i++) {
+					if (! this.editor.char[i].index) continue;
+					var index = this.editor.char[i].index;
+					this.font.chars[index].cols = [];
+					this.editor.char[i].cols = JSON.parse(JSON.stringify(this.empty_char.cols));
+				}
 			},
 			editorPrev(){
 				var index = this.editor.char.index;
@@ -490,7 +546,7 @@
 				var char_cols = char.slice(1, char.length - 1);
 				var decoded_cols = char_cols.map(function (value) {
 					value = parseInt(value, 10).toString(2).padStart(8, '0');
-					return value.split('');
+					return value.split('').reverse();
 				});
 				return decoded_cols;
 			}, 
