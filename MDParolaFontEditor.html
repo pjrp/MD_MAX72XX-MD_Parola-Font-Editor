@@ -307,7 +307,7 @@
 						v-if="! font.double_height || font.double_height && char_i < 127"
 					>
 						<div class="char_preview" v-if="font.double_height">
-							<div class="column" v-for="(column, col_i) in font.chars[char_i+129].cols">
+							<div class="column" v-for="(column, col_i) in font.chars[char_i+128].cols">
 								<div v-for="(led, led_i) in column" 
 									:class="{ on: parseInt(led) }"
 								>
@@ -426,7 +426,7 @@
 			editorLoadChar(index){
 				var char = [];
 				char.push(this.font.chars[index]);
-				if (this.font.double_height) char.unshift(this.font.chars[index + 129]);
+				if (this.font.double_height) char.unshift(this.font.chars[index + 128]);
 				// clear editor
 				for (var i = 0; i < 2; i++) {
 					this.editor.char[i].cols = [];
@@ -508,12 +508,21 @@
 				}
 			},
 			editorPrev(){
-				var index = this.editor.char.index;
-				if( index > 0) this.editorLoadChar(index - 1);
+				var i = 0;
+				if( this.font.double_height) i = 1;
+				var index = this.editor.char[i].index;
+				if( index != 0) this.editorLoadChar( index - 1);
 			},
 			editorNext(){
-				var index = this.editor.char.index;
-				if(index < 254) this.editorLoadChar(index + 1);	
+				var i = 0;
+				var l = 254;
+				if( this.font.double_height) {
+					i = 1;
+					l = 126;
+				}
+				var index = this.editor.char[i].index;
+				console.log(index);
+				if(index != l) this.editorLoadChar(index + 1);	
 			},
 			resetFont (){
 				this.font.chars = [];
@@ -539,8 +548,8 @@
 				cfont_start = cfont.indexOf('{') + 1;
 				cfont_end = cfont.lastIndexOf('}');
 				cfont_chars = cfont.substring(cfont_start, cfont_end);
-				cfont_chars = cfont_chars.replace(/[\n\r]/g,'|');
-				chars = cfont_chars.split("|");
+				//cfont_chars = cfont_chars.replace(/[\n\r]/g,'|');
+				chars = cfont_chars.split("\n");
 				// console.log(chars);
 				for (var i = 0; i < chars.length; i++) {
 					chars[i] = chars[i].split(",");
