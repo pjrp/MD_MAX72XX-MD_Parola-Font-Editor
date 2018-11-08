@@ -213,7 +213,7 @@
 
 		<div id="editor">
 			<div class="toolbar form-inline">
-				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span v-if="editor.char[0].index">{{ loadedCharIndex }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[loadedCharIndex] }}</span></div>
+				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span>{{ loadedCharIndex }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[loadedCharIndex] }}</span></div>
 				<div class="btn-group  mb-2 mr-sm-2" role="group">
 					<button type="button" @click="editorPrev" class="btn btn-primary" >Prev</button>
 					<button type="button" @click="editorNext"  class="btn btn-primary" >Next</button>
@@ -323,7 +323,7 @@
 							</div>
 						</div>
 						<div>
-							<span v-if="font.double_height">{{ char_i + 129 }}/</span><span>{{ char_i }}</span><br>
+							<span>{{ char_i }}</span><span v-if="font.double_height">/{{ char_i + 128 }}</span><br>
 							<span>{{ ascii[char_i] }}</span>
 						</div>
 					</div>
@@ -386,7 +386,7 @@
 			encodedChar: function () {
 				var encoded_char = '';
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length ) continue;
 					encoded_char += this.encodeChar(this.editor.char[i], this.editor.char[i].index) + '';
 				}
 				return encoded_char
@@ -445,7 +445,7 @@
 					}
 					this.editor.char[i].label = JSON.parse(JSON.stringify(char[i].label));
 					if (i == 0 && this.font.double_height) {
-						this.editor.char[i].index = index + 129;
+						this.editor.char[i].index = index + 128;
 					} else {
 						this.editor.char[i].index = index;
 					}
@@ -454,43 +454,61 @@
 			editorSave(){
 				for (var i = 0; i < 2; i++) {
 					var index = this.editor.char[i].index;
-					console.log(index);
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length) continue;
 					this.font.chars[index].cols = JSON.parse(JSON.stringify(this.editor.char[i].cols)); 
 					this.font.chars[index].label = JSON.parse(JSON.stringify(this.editor.char[i].label));
 				}
 			},
 			editorAddCol(){
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length) continue;
 					this.editor.char[i].cols.push([0,0,0,0,0,0,0,0])
 				}
 			},
 			editorRemoveCol(){
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length) continue;
 					this.editor.char[i].cols.splice(-1,1);
 				}
 			},
 			editorFit(){
-				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
-					var length = this.editor.char[i].cols.length - 1;
-					var i = 0;
-					while ( parseInt(this.editor.char[i].cols[i].join('')) == false && i < length) {
-						this.editor.char[i].cols.shift();
-						i++;
-					}
-					i = this.editor.char[i].cols.length - 1;
-					while ( parseInt(this.editor.char[i].cols[i].join('')) == false && i > 0) {
-						this.editor.char[i].cols.splice(-1,1);
-						i--;
+				var char = this.editor.char;
+				var cropped = [], merged = [], i, length, from, to;
+				// join char cols and parse int 
+				for (i = 0; i < char[0].cols.length; i++) {
+					if ( char[1].cols.length ) {
+						merged.push( parseInt(char[0].cols[i].join('') + char[1].cols[i].join(''),2) );
+					} else {
+						merged.push( parseInt(char[0].cols[i].join(''),2) );
 					}
 				}
-			},
+				
+				i = 0;
+				length = merged.length;
+				from = 0;
+				// find empty cols at the beginning and at the end
+				while ( merged[i] == 0) {
+					from ++;
+					i ++;
+				}
+				to = length;
+				while ( merged[to -1] == 0) {
+					to --;
+				}
+
+				if (! to) return;
+			
+				for (var i = 0; i < 2; i++) {
+					if (! char[i].cols.length ) continue;
+					char[i].cols = char[i].cols.slice(from, to);
+
+				}
+
+
+			},	
 			editorClear(){
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length) continue;
 					var width = this.editor.char[i].cols.length;
 					var empty = [];
 					for (var c = 0; c < width; c++) {
@@ -501,7 +519,7 @@
 			},
 			editorDelete(){
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].index) continue;
+					if (! this.editor.char[i].cols.length) continue;
 					var index = this.editor.char[i].index;
 					this.font.chars[index].cols = [];
 					this.editor.char[i].cols = JSON.parse(JSON.stringify(this.empty_char.cols));
@@ -550,7 +568,6 @@
 				cfont_chars = cfont.substring(cfont_start, cfont_end);
 				//cfont_chars = cfont_chars.replace(/[\n\r]/g,'|');
 				chars = cfont_chars.split("\n");
-				// console.log(chars);
 				for (var i = 0; i < chars.length; i++) {
 					chars[i] = chars[i].split(",");
 				}
@@ -560,7 +577,6 @@
 				});
 				this.resetFont();	
 				for (var i = 0; i < chars.length -1; i++) {
-					// console.log(chars[i]);
 					this.font.chars[i].cols = this.decodeChar(chars[i]); 
 					this.font.chars[i].label = chars[i].slice(-1)[0].replace(/(\t|\/\/)+ [0-9]+/g,'');
 				}
