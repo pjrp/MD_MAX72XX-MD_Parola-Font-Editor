@@ -210,7 +210,7 @@
 <body>
 
 	<div id="app" class="container">
-
+		<p><canvas id="canvas"></canvas></p>
 		<div id="editor">
 			<div class="toolbar form-inline">
 				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span>{{ loadedCharIndex }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[loadedCharIndex] }}</span></div>
@@ -419,6 +419,25 @@
 				this.editorLoadChar(32);
 			}  else {
 				this.resetFont();
+			}
+			
+			var c = document.getElementById("canvas");
+			var cols = this.font.chars[35].cols;
+			var cw = cols.length;
+			var ch = cols[0].length;
+			c.width = cw * 2;
+			c.height = ch * 2;
+			var ctx = c.getContext("2d");
+
+			for (var x=0; x<cw; x++) {
+				for (var y=0; y<ch; y++) {
+					if (parseInt(cols[x][y])) {
+						ctx.fillStyle = '#FF0000';
+					} else {
+						ctx.fillStyle = '#222222';
+					}
+					ctx.fillRect(x*2, y*2, 2, 2);
+				}
 			}
 		},
 		methods: {
