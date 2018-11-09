@@ -210,7 +210,6 @@
 <body>
 
 	<div id="app" class="container">
-		<p><canvas id="canvas"></canvas></p>
 		<div id="editor">
 			<div class="toolbar form-inline">
 				<div class="loaded_char mb-2 mr-sm-2" >#&nbsp;<span>{{ loadedCharIndex }}</span>&nbsp;<span class="badge badge-primary">{{ ascii[loadedCharIndex] }}</span></div>
@@ -306,6 +305,10 @@
 						v-on:click.prevent="editorLoadChar(char_i)"
 						v-if="! font.double_height || font.double_height && char_i < 127"
 					>
+						<char-preview :char="font.chars[char_i+128].cols"  v-if="font.double_height" class="char_preview"></char-preview>
+						<char-preview :char="font.chars[char_i].cols" class="char_preview"></char-preview>
+
+						<div v-if="false">
 						<div class="char_preview" v-if="font.double_height">
 							<div class="column" v-for="(column, col_i) in font.chars[char_i+128].cols">
 								<div v-for="(led, led_i) in column" 
@@ -322,6 +325,8 @@
 								</div>
 							</div>
 						</div>
+						</div>
+
 						<div>
 							<span>{{ char_i }}</span><span v-if="font.double_height">/{{ char_i + 128 }}</span><br>
 							<span>{{ ascii[char_i] }}</span>
@@ -335,7 +340,11 @@
 
 
 	</div>
-
+	<script type="text/x-template" id="char-preview-template">
+		<div class="my-canvas-wrapper">
+			<canvas ref="my-canvas"></canvas>
+		</div>
+	</script>
 	
 	<script>
 
@@ -419,25 +428,6 @@
 				this.editorLoadChar(32);
 			}  else {
 				this.resetFont();
-			}
-			
-			var c = document.getElementById("canvas");
-			var cols = this.font.chars[35].cols;
-			var cw = cols.length;
-			var ch = cols[0].length;
-			c.width = cw * 2;
-			c.height = ch * 2;
-			var ctx = c.getContext("2d");
-
-			for (var x=0; x<cw; x++) {
-				for (var y=0; y<ch; y++) {
-					if (parseInt(cols[x][y])) {
-						ctx.fillStyle = '#FF0000';
-					} else {
-						ctx.fillStyle = '#222222';
-					}
-					ctx.fillRect(x*2, y*2, 2, 2);
-				}
 			}
 		},
 		methods: {
@@ -645,7 +635,53 @@
 			}, 
 		}
 	})
+
+	Vue.component('char-preview', {
+		template: '#char-preview-template',
+		props: ['char'],
+		watch: {
+			char: function(val, oldVal) {
+				this.renderChar();
+			}
+		},
+		mounted() {
+			this.renderChar();
+		},
+		methods: {
+			renderChar () {
+				var c = this.$refs['my-canvas'];
+				var cols = this.char;
+				c.width = 8*4;
+				c.height = 8*4;
+				if(! cols.length) return;
+				var cw = cols.length;
+				var ch = cols[0].length;
+				c.width = cw * 4;
+				c.height = ch * 4;
+				var ctx = c.getContext("2d");
+
+				for (var x=0; x<cw; x++) {
+					for (var y=0; y<ch; y++) {
+						if (parseInt(cols[x][y])) {
+							ctx.fillStyle = '#FF0000';
+						} else {
+							ctx.fillStyle = '#333333';
+						}
+						ctx.lineWidth = 1;
+						ctx.strokeStyle = '#222222';
+						ctx.beginPath();
+						ctx.arc(x*4+2, y*4+2, 2, 0, 2*Math.PI)
+						ctx.fill();
+						ctx.stroke();
+						//ctx.fillRect(x*4, y*4, 4, 4);
+					}
+				}
+			}
+		}
+	})
 	</script>
+
+
 	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
