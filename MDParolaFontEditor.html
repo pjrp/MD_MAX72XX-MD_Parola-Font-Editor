@@ -469,14 +469,18 @@
 				}
 			},
 			editorAddCol(){
-				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].cols.length) continue;
+				var i, length;
+				for ( i = 0; i < 2; i++) {
+					length = this.editor.char[i].cols.length;
+					if (! length || length == 24 ) continue;
 					this.editor.char[i].cols.push([0,0,0,0,0,0,0,0])
 				}
 			},
 			editorRemoveCol(){
+				var i, length;
 				for (var i = 0; i < 2; i++) {
-					if (! this.editor.char[i].cols.length) continue;
+					length = this.editor.char[i].cols.length;
+					if (! length || length == 1) continue;
 					this.editor.char[i].cols.splice(-1,1);
 				}
 			},
