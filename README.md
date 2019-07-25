@@ -17,6 +17,4 @@ For info about using fonts please refer to [Parola_Fonts example](https://github
 - ... 
 
 ## Next version possible improvements
-- Edit double height fonts
-- Sprite animation mode
 - Write and preview
