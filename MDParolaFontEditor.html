@@ -590,8 +590,12 @@
 				});
 				this.resetFont();	
 				for (var i = 0; i < chars.length -1; i++) {
+					var label;
 					this.font.chars[i].cols = this.decodeChar(chars[i]); 
-					this.font.chars[i].label = chars[i].slice(-1)[0].replace(/(\t|\/\/)+ [0-9]+/g,'');
+					// handle label
+					label = chars[i].slice(-1)[0].replace(/(\t|\/\/)+ [0-9]+/g,'');
+					label = this.labelStrip(label);
+					this.font.chars[i].label = label;
 				}
 			},
 			decodeChar (char){
@@ -617,8 +621,9 @@
 				this.cfont = cfont;
 			},
 			encodeChar (char, index = 0){
-				var width = char.cols.length; 
 				var encoded_char = '';
+				var width = char.cols.length; 
+				var label = char.label;
 				var reversed;
 				if (! width) {
 					encoded_char += '0, ';
@@ -631,12 +636,26 @@
 						encoded_char += ', '; 
 					}
 				}
-				// ToDo: Default label from ASCII 
-				//encoded_char += '\t// ' + index + ' \'' + this.ascii[index] + '\'\t' ; 
-				encoded_char += '\t// ' + index;
-				encoded_char += char.label + '\n' ;
+				// Handle label
+				encoded_char += '\t// ' + index; 
+				if (label === "") label = this.ascii[index]; // use default ANSII char for label
+				encoded_char += this.labelFormat(label);
+				encoded_char += '\n'; // new line
 				return encoded_char
-			}, 
+			},
+			labelStrip (label) {
+				// clear prepends and appends
+				// ToDo: better handling for "'" char label, current regex will create empty label
+				label = label.replace(/(^\s+)|(\s*- ' *?)|('+$)/g,'');
+				return label;
+			},
+			labelFormat (label) {
+				var label_formated = '';
+				label_formated += ' - \''; // prepend " - '"					
+				label_formated += this.labelStrip(label);
+				label_formated += '\''; // append "'""
+				return label_formated;
+			}
 		}
 	})
 
