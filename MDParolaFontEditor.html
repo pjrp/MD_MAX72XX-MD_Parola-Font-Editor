@@ -604,7 +604,7 @@
 				}
 				var char_cols = char.slice(1, char.length - 1);
 				var decoded_cols = char_cols.map(function (value) {
-					value = parseInt(value, 10).toString(2).padStart(8, '0');
+					value = parseInt(value).toString(2).padStart(8, '0');
 					return value.split('').reverse();
 				});
 				return decoded_cols;
